@@ -78,18 +78,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         extract_filepath(c)
     })
     .collect();
-
-    if let Some(m) = tool_calls[0] {
-        let fp: FilePath = serde_json::from_str(m)?;
-        let wr = fs::read_to_string(fp.file_path.as_str())?;
-        println!("{wr}");
-    }
     
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     eprintln!("Logs from your program will appear here!");
 
     if let Some(content) = &resp.choices[0].message.content {
         println!("{}", content);
+    }
+    
+    if let Some(m) = tool_calls[0] {
+        let fp: FilePath = serde_json::from_str(m)?;
+        let wr = fs::read_to_string(fp.file_path.as_str())?;
+        println!("{wr}");
     }
 
     Ok(())
@@ -120,7 +120,7 @@ struct Choice {
 struct Message {
     role: String,
     content: Option<String>,
-    tool_calls: Vec<ToolCall>
+    tool_calls: Option<Vec<ToolCall>>
 }
 
 #[derive(Debug, Deserialize)]
@@ -139,9 +139,11 @@ struct Function {
 }
 
 fn extract_filepath(choice: &Choice) -> Option<&str> {
-    let fct = &choice.message.tool_calls[0].function;
-    if fct.name == "Read" {
-        return Some(fct.arguments.as_str());
+    if let Some(tool_calls) = &choice.message.tool_calls {
+        let fct = &tool_calls[0].function;
+        if fct.name == "Read" {
+            return Some(fct.arguments.as_str());
+        }
     }
 
     return None;
