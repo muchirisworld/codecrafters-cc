@@ -88,10 +88,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     eprintln!("Logs from your program will appear here!");
 
-    // TODO: Uncomment the lines below to pass the first stage
-    // if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
-    //     println!("{}", content);
-    // }
+    if let Some(content) = &resp.choices[0].message.content {
+        println!("{}", content);
+    }
 
     Ok(())
 }
@@ -120,7 +119,7 @@ struct Choice {
 #[allow(unused)]
 struct Message {
     role: String,
-    // content: Option<_>,
+    content: Option<String>,
     tool_calls: Vec<ToolCall>
 }
 
