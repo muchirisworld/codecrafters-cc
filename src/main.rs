@@ -1,7 +1,8 @@
 use async_openai::{Client, config::OpenAIConfig};
 use clap::Parser;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::{env, process};
+use std::{env, fs, process};
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -72,13 +73,77 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))
         .await?;
 
+    let resp: LLMResponse = serde_json::from_value(response)?;
+    let tool_calls: Vec<Option<&str>> = resp.choices.iter().map(|c| {
+        extract_filepath(c)
+    })
+    .collect();
+
+    if let Some(m) = tool_calls[0] {
+        let fp: FilePath = serde_json::from_str(m)?;
+        let wr = fs::read_to_string(fp.file_path.as_str())?;
+        println!("{wr}");
+    }
+    
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     eprintln!("Logs from your program will appear here!");
 
     // TODO: Uncomment the lines below to pass the first stage
-    if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
-        println!("{}", content);
-    }
+    // if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
+    //     println!("{}", content);
+    // }
 
     Ok(())
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+struct FilePath {
+    file_path: String
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+struct LLMResponse {
+    choices: Vec<Choice>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+struct Choice {
+    index: i32,
+    message: Message,
+    // finish reason
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+struct Message {
+    role: String,
+    // content: Option<_>,
+    tool_calls: Vec<ToolCall>
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+struct ToolCall {
+    id: String,
+    index: i32,
+    function: Function
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+struct Function {
+    name: String,
+    arguments: String
+}
+
+fn extract_filepath(choice: &Choice) -> Option<&str> {
+    let fct = &choice.message.tool_calls[0].function;
+    if fct.name == "Read" {
+        return Some(fct.arguments.as_str());
+    }
+
+    return None;
 }
