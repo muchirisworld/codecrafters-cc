@@ -13,6 +13,7 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
+    dotenvy::dotenv().ok();
 
     let base_url = env::var("OPENROUTER_BASE_URL")
         .unwrap_or_else(|_| "https://openrouter.ai/api/v1".to_string());
@@ -21,6 +22,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("OPENROUTER_API_KEY is not set");
         process::exit(1);
     });
+    
+    let is_local = env::var("local")
+        .map(|local| local == "true")
+        .unwrap_or(false);
+
+    let model = if is_local {
+        "nvidia/nemotron-3-super-120b-a12b:free"
+    } else {
+        "anthropic/claude-haiku-4.5"
+    };
 
     let config = OpenAIConfig::new()
         .with_api_base(base_url)
@@ -38,7 +49,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "content": args.prompt
                 }
             ],
-            "model": "anthropic/claude-haiku-4.5",
+            "model": model,
+            "tools": [
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "Read",
+                    "description": "Read and return the contents of a file",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "file_path": {
+                          "type": "string",
+                          "description": "The path to the file to read"
+                        }
+                      },
+                      "required": ["file_path"]
+                    }
+                  }
+                }
+            ]
         }))
         .await?;
 
