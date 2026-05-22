@@ -89,18 +89,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(tcs) = ast_msg.extract_toolcalls() {
             let tc_clone = tcs.clone();
 
-            for tc in tc_clone {
-                if let Some(path) = tc.extract_filepath() {
-                    let fp: FilePath = serde_json::from_str(path)?;
-                    let ctn = fs::read_to_string(fp.file_path.as_str())?;
-
-                    msgs.push(Message {
-                        role: "tool".to_string(),
-                        content: Some(ctn),
-                        tool_call_id: Some(tc.id.to_string()),
-                        tool_calls: None,
-                    });
+            if !tcs.is_empty() {
+                for tc in tc_clone {
+                    if let Some(path) = tc.extract_filepath() {
+                        let fp: FilePath = serde_json::from_str(path)?;
+                        let ctn = fs::read_to_string(fp.file_path.as_str())?;
+    
+                        msgs.push(Message {
+                            role: "tool".to_string(),
+                            content: Some(ctn),
+                            tool_call_id: Some(tc.id.to_string()),
+                            tool_calls: None,
+                        });
+                    }
                 }
+            
             }
             
             continue;
