@@ -84,11 +84,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .create_byot(vr)
         .await?;
 
-    println!("Response: {:#?}", &response.as_str());
+    // println!("Response: {:#?}", &response.as_str());
 
     resp = serde_json::from_value(response)?;
     
-    println!("Response: {:#?}", &resp);
+    // println!("Response: {:#?}", &resp);
     
     if let Some(choice) = resp
         .choices
@@ -122,6 +122,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 
             }
+        } else {
+            let fin = choice.message.clone();
+            println!("Final message: {:#?}", &fin);
+            msgs.push(fin);
         }
     } else {
         break;
