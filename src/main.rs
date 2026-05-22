@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut processed_tcs = false;
 
         if let Some(tcs) = ast_msg.extract_toolcalls() {
-            if !tcs.is_empty() {
+            // if !tcs.is_empty() {
                 for tc in tcs {
                     if let Some(path) = tc.extract_filepath() {
                         let fp: FilePath = serde_json::from_str(path)?;
@@ -111,7 +111,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if processed_tcs {
                 continue;
             }
-        } else if let Some(content) = ast_msg.content {
+        // }
+       
+        if let Some(content) = ast_msg.content {
             println!("{content}");
             break;
         }
