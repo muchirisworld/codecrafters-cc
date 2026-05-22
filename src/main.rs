@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }];
 
     let mut resp: LLMResponse;
-    let mut tool_calls: Vec<ToolCall> = Vec::new();
+    // let mut tool_calls: Vec<ToolCall> = Vec::new();
     
     loop { // <- START
 
@@ -98,8 +98,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(tcs) = choice.message.extract_toolcalls() {
             println!("Tcs: {:#?}", &tcs);
             let tc_clone = tcs.clone();
-            tool_calls = tcs.clone();
-            println!("Tool calls clone: {:#?}", &tool_calls);
+            // tool_calls = tcs.clone();
+            println!("Tool calls clone: {:#?}", &tc_clone);
             println!("Msgs before: {:#?}", &msgs);
             msgs.push(choice.message.clone());
             println!("Msgs after first: {:#?}", &msgs);
@@ -130,24 +130,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     eprintln!("Logs from your program will appear here!");
 
-    if let Some(content) = &resp.choices[0].message.content {
-        println!("{}", content);
-    }
+    // if let Some(content) = &resp.choices[0].message.content {
+    //     println!("{}", content);
+    // }
     
-    if let Some(tc) = tool_calls.first().and_then(|tc| tc.extract_filepath()) {
-        let fp: FilePath = serde_json::from_str(tc)?;
-        let wr = fs::read_to_string(fp.file_path.as_str())?;
-        println!("{wr}");
-    }
+    // if let Some(tc) = tool_calls.first().and_then(|tc| tc.extract_filepath()) {
+    //     let fp: FilePath = serde_json::from_str(tc)?;
+    //     let wr = fs::read_to_string(fp.file_path.as_str())?;
+    //     println!("{wr}");
+    // }
 
     Ok(())
 }
 
 
-#[derive(Debug, Serialize, Deserialize)]
-struct FilePath {
-    file_path: String
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// struct FilePath {
+//     file_path: String
+// }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(unused)]
