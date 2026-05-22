@@ -106,13 +106,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let fp: FilePath = serde_json::from_str(path)?;
                 let ctn = fs::read_to_string(fp.file_path.as_str())?;
 
-                    msgs.push(Message {
-                        role: "tool".to_string(),
-                        content: Some(ctn),
-                        tool_call_id: Some(tc.id.to_string()),
-                        tool_calls: None
-                    });
-                }
+                msgs.push(Message {
+                    role: "tool".to_string(),
+                    content: Some(ctn),
+                    tool_call_id: Some(tc.id.to_string()),
+                    tool_calls: None
+                });
             }
             
         continue;
