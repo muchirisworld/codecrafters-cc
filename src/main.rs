@@ -43,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut msgs: Vec<Message> = vec![Message{
         role: "user".to_string(),
         content: Some(args.prompt),
+        tool_call_id : None,
         tool_calls: None
     }];
 
@@ -50,11 +51,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tool_calls: Vec<ToolCall> = Vec::new();
     
     loop { // <- START
-        
-    #[allow(unused_variables)]
-    let response: Value = client
-        .chat()
-        .create_byot(json!({
+
+        let vr = json!({
             "messages": msgs,
             "model": model,
             "tools": [
@@ -76,12 +74,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                   }
                 }
             ]
-        }))
+        });
+        
+        println!("Start loop: {:#?}", vr);
+        
+    #[allow(unused_variables)]
+    let response: Value = client
+        .chat()
+        .create_byot(vr)
         .await?;
 
     println!("Response: {:#?}", &response.as_str());
 
     resp = serde_json::from_value(response)?;
+    
+    println!("Response: {:#?}", &resp);
     
     if let Some(choice) = resp
         .choices
@@ -89,8 +96,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .find(|c| c.message.extract_toolcalls().is_some())
     {
         if let Some(tcs) = choice.message.extract_toolcalls() {
+            println!("Tcs: {:#?}", &tcs);
+            let tc_clone = tcs.clone();
             tool_calls = tcs.clone();
+            println!("Tool calls clone: {:#?}", &tool_calls);
+            println!("Msgs before: {:#?}", &msgs);
             msgs.push(choice.message.clone());
+            println!("Msgs after first: {:#?}", &msgs);
+            let fp = tc_clone[0].extract_filepath();
+            if let Some(path) = fp  {
+                let ctn = fs::read_to_string(path)?;
+                let tc_clone_opt = tc_clone.first();
+
+                if let Some(tc_clone_br) = tc_clone_opt {
+                    let tc_clone_id = tc_clone_br.id.as_str();
+                    msgs.push(Message {
+                        role: "tool".to_string(),
+                        content: Some(ctn),
+                        tool_call_id: Some(tc_clone_id.to_string()),
+                        tool_calls: None
+                    });
+                    println!("Msgs after second: {:#?}", &msgs);
+                }
+                
+            }
         }
     } else {
         break;
@@ -139,6 +168,7 @@ struct Choice {
 struct Message {
     role: String,
     content: Option<String>,
+    tool_call_id: Option<String>,
     tool_calls: Option<Vec<ToolCall>>
 }
 
