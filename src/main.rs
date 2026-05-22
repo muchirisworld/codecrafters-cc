@@ -101,17 +101,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         tool_calls: None,
                     });
                 }
-
-                continue;
             }
-        }
-
-        if let Some(content) = ast_msg.content {
+            
+            continue;
+        } else if let Some(content) = ast_msg.content {
             println!("{content}");
             break;
         }
-
-        break;
     }
 
     // You can use print statements as follows for debugging, they'll be visible when running tests.
