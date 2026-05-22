@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Client::with_config(config);
 
-    let msgs: Vec<Message> = vec![Message{
+    let mut msgs: Vec<Message> = vec![Message{
         role: "user".to_string(),
         content: Some(args.prompt),
         tool_calls: None
@@ -83,12 +83,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     resp = serde_json::from_value(response)?;
     
-    if let Some(tcs) = resp
+    if let Some(choice) = resp
         .choices
         .iter()
-        .find_map(|c| c.message.extract_toolcalls())
+        .find(|c| c.message.extract_toolcalls().is_some())
     {
-        tool_calls = tcs.clone()
+        if let Some(tcs) = choice.message.extract_toolcalls() {
+            tool_calls = tcs.clone();
+            msgs.push(choice.message.clone());
+        }
     } else {
         break;
     }
@@ -131,7 +134,7 @@ struct Choice {
     // finish reason
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(unused)]
 struct Message {
     role: String,
