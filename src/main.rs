@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("OPENROUTER_API_KEY is not set");
         process::exit(1);
     });
-    
+
     let is_local = env::var("local")
         .map(|local| local == "true")
         .unwrap_or(false);
@@ -40,18 +40,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Client::with_config(config);
 
-    let mut msgs: Vec<Message> = vec![Message{
+    let mut msgs: Vec<Message> = vec![Message {
         role: "user".to_string(),
         content: Some(args.prompt),
-        tool_call_id : None,
-        tool_calls: None
+        tool_call_id: None,
+        tool_calls: None,
     }];
 
-    let mut resp: LLMResponse;
-    // let mut tool_calls: Vec<ToolCall> = Vec::new();
-    
-    loop { // <- START
+    let resp: LLMResponse;
 
+    loop {
         let vr = json!({
             "messages": msgs,
             "model": model,
@@ -75,77 +73,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             ]
         });
-        
-        // println!("Start loop: {:#?}", vr);
-        
-    #[allow(unused_variables)]
-    let response: Value = client
-        .chat()
-        .create_byot(vr)
-        .await?;
 
-    // println!("Response: {:#?}", &response.as_str());
+        #[allow(unused_variables)]
+        let response: Value = client.chat().create_byot(vr).await?;
 
-    resp = serde_json::from_value(response)?;
-    
-    // println!("Response: {:#?}", &resp);
-    
-    let Some(choice) = resp.choices.first() else {
-        break;
-    };
+        resp = serde_json::from_value(response)?;
 
-    let ast_msg = choice.message.clone();
-    
-    msgs.push(ast_msg.clone());
-    
-    if let Some(tcs) = ast_msg.extract_toolcalls() {
-        let tc_clone = tcs.clone();
+        let Some(choice) = resp.choices.first() else {
+            break;
+        };
 
-        for tc in tc_clone {
-            if let Some(path) = tc.extract_filepath() {
-                let fp: FilePath = serde_json::from_str(path)?;
-                let ctn = fs::read_to_string(fp.file_path.as_str())?;
+        let ast_msg = choice.message.clone();
+        msgs.push(ast_msg.clone());
 
-                msgs.push(Message {
-                    role: "tool".to_string(),
-                    content: Some(ctn),
-                    tool_call_id: Some(tc.id.to_string()),
-                    tool_calls: None
-                });
+        if let Some(tcs) = ast_msg.extract_toolcalls() {
+            let tc_clone = tcs.clone();
+
+            for tc in tc_clone {
+                if let Some(path) = tc.extract_filepath() {
+                    let fp: FilePath = serde_json::from_str(path)?;
+                    let ctn = fs::read_to_string(fp.file_path.as_str())?;
+
+                    msgs.push(Message {
+                        role: "tool".to_string(),
+                        content: Some(ctn),
+                        tool_call_id: Some(tc.id.to_string()),
+                        tool_calls: None,
+                    });
+                }
+
+                continue;
             }
-            
-        continue;
-    }
+        }
 
-    if let Some(content) = ast_msg.content {
-        println!("{content}");
+        if let Some(content) = ast_msg.content {
+            println!("{content}");
+            break;
+        }
+
         break;
     }
-    
-    break;
-    
-    } // <- END
-    
+
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     eprintln!("Logs from your program will appear here!");
-
-    // if let Some(content) = &resp.choices[0].message.content {
-    //     println!("{}", content);
-    // }
-    
-    // if let Some(tc) = tool_calls.first().and_then(|tc| tc.extract_filepath()) {
-    //     let fp: FilePath = serde_json::from_str(tc)?;
-    //     let wr = fs::read_to_string(fp.file_path.as_str())?;
-    //     println!("{wr}");
-    // }
 
     Ok(())
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 struct FilePath {
-    file_path: String
+    file_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -168,7 +145,7 @@ struct Message {
     role: String,
     content: Option<String>,
     tool_call_id: Option<String>,
-    tool_calls: Option<Vec<ToolCall>>
+    tool_calls: Option<Vec<ToolCall>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,14 +153,14 @@ struct Message {
 struct ToolCall {
     id: String,
     index: i32,
-    function: Function
+    function: Function,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(unused)]
 struct Function {
     name: String,
-    arguments: String
+    arguments: String,
 }
 
 impl Message {
@@ -196,9 +173,8 @@ impl ToolCall {
     fn extract_filepath(&self) -> Option<&str> {
         let fct = &self.function;
         if fct.name.as_str() == "Read" {
-            return Some(&fct.arguments.as_str())
+            return Some(fct.arguments.as_str());
         }
-
         None
     }
 }
