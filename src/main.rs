@@ -110,10 +110,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 processed_tcs = true;
             }
+        }
 
-            if processed_tcs {
-                continue;
-            }
+        if processed_tcs {
+            continue;
         }
 
         if let Some(content) = ast_msg.content {
