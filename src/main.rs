@@ -83,6 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             break;
         };
 
+        let finish_reason = choice.finish_reason.clone();
         let ast_msg = choice.message.clone();
         msgs.push(ast_msg.clone());
 
@@ -118,6 +119,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             break;
         }
 
+        if finish_reason.as_deref() == Some("stop") {
+            break;
+        }
+
         break;
     }
 
@@ -143,7 +148,7 @@ struct LLMResponse {
 struct Choice {
     index: i32,
     message: Message,
-    // finish reason
+    finish_reason: Option<String>
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
