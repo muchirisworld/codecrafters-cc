@@ -90,29 +90,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut processed_tcs = false;
 
         if let Some(tcs) = ast_msg.extract_toolcalls() {
-            // if !tcs.is_empty() {
-                for tc in tcs {
-                    if let Some(path) = tc.extract_filepath() {
-                        let fp: FilePath = serde_json::from_str(path)?;
-                        let ctn = fs::read_to_string(fp.file_path.as_str())?;
-    
-                        msgs.push(Message {
-                            role: "tool".to_string(),
-                            content: Some(ctn),
-                            tool_call_id: Some(tc.id.to_string()),
-                            tool_calls: None,
-                        });
+            for tc in tcs {
+                if let Some(path) = tc.extract_filepath() {
+                    let fp: FilePath = serde_json::from_str(path)?;
+                    let ctn = fs::read_to_string(fp.file_path.as_str())?;
 
-                        processed_tcs = true;
-                    }
+                    msgs.push(Message {
+                        role: "tool".to_string(),
+                        content: Some(ctn),
+                        tool_call_id: Some(tc.id.to_string()),
+                        tool_calls: None,
+                    });
+
+                    processed_tcs = true;
                 }
-            
             }
-
+            
             if processed_tcs {
                 continue;
             }
-        // }
+
+        }
        
         if let Some(content) = ast_msg.content {
             println!("{content}");
