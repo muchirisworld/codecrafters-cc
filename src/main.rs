@@ -76,7 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ]
         });
         
-        println!("Start loop: {:#?}", vr);
+        // println!("Start loop: {:#?}", vr);
         
     #[allow(unused_variables)]
     let response: Value = client
@@ -90,45 +90,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // println!("Response: {:#?}", &resp);
     
-    if let Some(choice) = resp
-        .choices
-        .iter()
-        .find(|c| c.message.extract_toolcalls().is_some())
-    {
-        if let Some(tcs) = choice.message.extract_toolcalls() {
-            // println!("Tcs: {:#?}", &tcs);
-            let tc_clone = tcs.clone();
-            // tool_calls = tcs.clone();
-            // println!("Tool calls clone: {:#?}", &tc_clone);
-            // println!("Msgs before: {:#?}", &msgs);
-            msgs.push(choice.message.clone());
-            // println!("Msgs after first: {:#?}", &msgs);
-            let extracted = tc_clone[0].extract_filepath();
-            //     let wr = fs::read_to_string(fp.file_path.as_str())?;
-            if let Some(path) = extracted  {
+    let Some(choice) = resp.choices.first() else {
+        break;
+    };
+
+    let ast_msg = choice.message.clone();
+    
+    if let Some(tcs) = ast_msg.extract_toolcalls() {
+        let tc_clone = tcs.clone();
+        
+        msgs.push(choice.message.clone());
+
+        for tc in tc_clone {
+            if let Some(path) = tc.extract_filepath() {
                 let fp: FilePath = serde_json::from_str(path)?;
                 let ctn = fs::read_to_string(fp.file_path.as_str())?;
-                let tc_clone_opt = tc_clone.first();
 
-                if let Some(tc_clone_br) = tc_clone_opt {
-                    let tc_clone_id = tc_clone_br.id.as_str();
                     msgs.push(Message {
                         role: "tool".to_string(),
                         content: Some(ctn),
-                        tool_call_id: Some(tc_clone_id.to_string()),
+                        tool_call_id: Some(tc.id.to_string()),
                         tool_calls: None
                     });
-                    // println!("Msgs after second: {:#?}", &msgs);
                 }
-                
             }
-        } else {
-            let fin = choice.message.clone();
-            println!("Final message: {:#?}", &fin);
-            msgs.push(fin);
-        }
-    } else {
-        break;
+            
+        continue;
+    }
+
+    if let Some(content) = ast_msg.content {
+        println!("{content}");
     }
     
     } // <- END
@@ -139,16 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // if let Some(content) = &resp.choices[0].message.content {
     //     println!("{}", content);
     // }
-
-    // let final_msg = ;
-    if let Some(msg) = msgs.last() {
-        let msg_clone = msg.clone();
-        let ct = msg_clone.content;
-
-        if let Some(cntn) = ct {
-            println!("{cntn}")
-        }
-    }
+    
     // if let Some(tc) = tool_calls.first().and_then(|tc| tc.extract_filepath()) {
     //     let fp: FilePath = serde_json::from_str(tc)?;
     //     let wr = fs::read_to_string(fp.file_path.as_str())?;
