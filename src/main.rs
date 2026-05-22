@@ -2,7 +2,7 @@ use async_openai::{Client, config::OpenAIConfig};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::{env, fs, process};
+use std::{env, fmt::format, fs, path, process};
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -91,19 +91,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if let Some(tcs) = ast_msg.extract_toolcalls() {
             for tc in tcs {
-                if let Some(path) = tc.extract_filepath() {
-                    let fp: FilePath = serde_json::from_str(path)?;
-                    let ctn = fs::read_to_string(fp.file_path.as_str())?;
+                let tool_result = match tc.function_name() {
+                    "Read" => {
+                        let fp = tc.read_file_path()?;
+                        fs::read_to_string(fp.file_path.as_str())?
+                    }
+                    other => {
+                        format!("Unsupported tool call: {other}")
+                    }
+                };
+                
+                msgs.push(Message {
+                    role: "tool".to_string(),
+                    content: Some(tool_result),
+                    tool_call_id: Some(tc.id.to_string()),
+                    tool_calls: None,
+                });
 
-                    msgs.push(Message {
-                        role: "tool".to_string(),
-                        content: Some(ctn),
-                        tool_call_id: Some(tc.id.to_string()),
-                        tool_calls: None,
-                    });
-
-                    processed_tcs = true;
-                }
+                processed_tcs = true;
             }
             
             if processed_tcs {
@@ -180,12 +185,16 @@ impl Message {
 }
 
 impl ToolCall {
-    fn extract_filepath(&self) -> Option<&str> {
-        let fct = &self.function;
-        if fct.name.as_str() == "Read" {
-            return Some(fct.arguments.as_str());
-        }
-        None
+    fn function_name(&self) -> &str {
+        self.function.name.as_str()
+    }
+    
+    fn arguments(&self) -> &str {
+        self.function.arguments.as_str()
+    }
+    
+    fn read_file_path(&self) -> Result<FilePath, serde_json::Error> {
+        serde_json::from_str(self.arguments())
     }
 }
 
