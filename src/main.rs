@@ -96,10 +96,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ast_msg = choice.message.clone();
     
+    msgs.push(ast_msg.clone());
+    
     if let Some(tcs) = ast_msg.extract_toolcalls() {
         let tc_clone = tcs.clone();
-        
-        msgs.push(choice.message.clone());
 
         for tc in tc_clone {
             if let Some(path) = tc.extract_filepath() {
@@ -120,6 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(content) = ast_msg.content {
         println!("{content}");
+        break;
     }
     
     break;
