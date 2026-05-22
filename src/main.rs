@@ -122,6 +122,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{content}");
     }
     
+    break;
+    
     } // <- END
     
     // You can use print statements as follows for debugging, they'll be visible when running tests.
