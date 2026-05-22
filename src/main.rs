@@ -2,7 +2,7 @@ use async_openai::{Client, config::OpenAIConfig};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::{env, fmt::format, fs, path, process};
+use std::{env, fs, process};
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         format!("Unsupported tool call: {other}")
                     }
                 };
-                
+
                 msgs.push(Message {
                     role: "tool".to_string(),
                     content: Some(tool_result),
@@ -110,13 +110,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 processed_tcs = true;
             }
-            
+
             if processed_tcs {
                 continue;
             }
-
         }
-       
+
         if let Some(content) = ast_msg.content {
             println!("{content}");
             break;
@@ -151,7 +150,7 @@ struct LLMResponse {
 struct Choice {
     index: i32,
     message: Message,
-    finish_reason: Option<String>
+    finish_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -188,11 +187,11 @@ impl ToolCall {
     fn function_name(&self) -> &str {
         self.function.name.as_str()
     }
-    
+
     fn arguments(&self) -> &str {
         self.function.arguments.as_str()
     }
-    
+
     fn read_file_path(&self) -> Result<FilePath, serde_json::Error> {
         serde_json::from_str(self.arguments())
     }
