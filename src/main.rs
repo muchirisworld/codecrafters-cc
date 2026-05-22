@@ -103,9 +103,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Msgs before: {:#?}", &msgs);
             msgs.push(choice.message.clone());
             println!("Msgs after first: {:#?}", &msgs);
-            let fp = tc_clone[0].extract_filepath();
-            if let Some(path) = fp  {
-                let ctn = fs::read_to_string(path)?;
+            let extracted = tc_clone[0].extract_filepath();
+            //     let wr = fs::read_to_string(fp.file_path.as_str())?;
+            if let Some(path) = extracted  {
+                let fp: FilePath = serde_json::from_str(path)?;
+                let ctn = fs::read_to_string(fp.file_path.as_str())?;
                 let tc_clone_opt = tc_clone.first();
 
                 if let Some(tc_clone_br) = tc_clone_opt {
@@ -144,10 +146,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 
-// #[derive(Debug, Serialize, Deserialize)]
-// struct FilePath {
-//     file_path: String
-// }
+#[derive(Debug, Serialize, Deserialize)]
+struct FilePath {
+    file_path: String
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(unused)]
