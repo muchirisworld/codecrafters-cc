@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tool_calls: None,
     }];
 
-    let resp: LLMResponse;
+    let mut resp: LLMResponse;
 
     loop {
         let vr = json!({
