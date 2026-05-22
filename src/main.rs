@@ -86,11 +86,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let ast_msg = choice.message.clone();
         msgs.push(ast_msg.clone());
 
-        if let Some(tcs) = ast_msg.extract_toolcalls() {
-            let tc_clone = tcs.clone();
+        let mut processed_tcs = false;
 
+        if let Some(tcs) = ast_msg.extract_toolcalls() {
             if !tcs.is_empty() {
-                for tc in tc_clone {
+                for tc in tcs {
                     if let Some(path) = tc.extract_filepath() {
                         let fp: FilePath = serde_json::from_str(path)?;
                         let ctn = fs::read_to_string(fp.file_path.as_str())?;
@@ -101,12 +101,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             tool_call_id: Some(tc.id.to_string()),
                             tool_calls: None,
                         });
+
+                        processed_tcs = true;
                     }
                 }
             
             }
-            
-            continue;
+
+            if processed_tcs {
+                continue;
+            }
         } else if let Some(content) = ast_msg.content {
             println!("{content}");
             break;
