@@ -2,7 +2,8 @@ use async_openai::{Client, config::OpenAIConfig};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::{env, fs, process};
+use std::{env, fs, process, time::Duration};
+use tokio::time::timeout;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -74,10 +75,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ]
         });
 
-        #[allow(unused_variables)]
-        let response: Value = client.chat().create_byot(vr).await?;
+        eprintln!(
+            "Sending chat request: model={model}, messages={}",
+            msgs.len()
+        );
 
-        resp = serde_json::from_value(response)?;
+        let response: Value =
+            match timeout(Duration::from_secs(30), client.chat().create_byot(vr)).await {
+                Ok(Ok(response)) => {
+                    eprintln!("Received chat response");
+                    response
+                }
+                Ok(Err(err)) => {
+                    eprintln!("Chat request failed: {err:?}");
+                    return Err(Box::<dyn std::error::Error>::from(err));
+                }
+                Err(_) => {
+                    eprintln!("Chat request timed out after 30 seconds");
+                    return Err("Chat request timed out after 30 seconds".into());
+                }
+            };
+
+        resp = match serde_json::from_value(response) {
+            Ok(resp) => resp,
+            Err(err) => {
+                eprintln!("Failed to parse chat response: {err:?}");
+                return Err(Box::<dyn std::error::Error>::from(err));
+            }
+        };
 
         let Some(choice) = resp.choices.first() else {
             break;
@@ -99,7 +124,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             format!("Unsupported tool call: {other}")
                         }
                     };
-    
+
                     msgs.push(Message {
                         role: "tool".to_string(),
                         content: Some(tool_result),
@@ -116,7 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 } else if finish_reason.as_deref() != Some("stop") {
                     eprintln!("Model stopped without content. Reason={finish_reason:?}");
                 }
-        
+
                 break;
             }
         }
@@ -161,7 +186,15 @@ struct Message {
 struct ToolCall {
     id: String,
     index: i32,
+
+    #[serde(rename = "type", default = "default_tool_call_type")]
+    tool_type: String,
+
     function: Function,
+}
+
+fn default_tool_call_type() -> String {
+    "function".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
