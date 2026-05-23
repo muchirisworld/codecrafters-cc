@@ -87,44 +87,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let ast_msg = choice.message.clone();
         msgs.push(ast_msg.clone());
 
-        let mut processed_tcs = false;
+        match ast_msg.extract_toolcalls() {
+            Some(tcs) if !tcs.is_empty() => {
+                for tc in tcs {
+                    let tool_result = match tc.function_name() {
+                        "Read" => {
+                            let fp = tc.read_file_path()?;
+                            fs::read_to_string(fp.file_path.as_str())?
+                        }
+                        other => {
+                            format!("Unsupported tool call: {other}")
+                        }
+                    };
+    
+                    msgs.push(Message {
+                        role: "tool".to_string(),
+                        content: Some(tool_result),
+                        tool_call_id: Some(tc.id.to_string()),
+                        tool_calls: None,
+                    });
+                }
 
-        if let Some(tcs) = ast_msg.extract_toolcalls() {
-            for tc in tcs {
-                let tool_result = match tc.function_name() {
-                    "Read" => {
-                        let fp = tc.read_file_path()?;
-                        fs::read_to_string(fp.file_path.as_str())?
-                    }
-                    other => {
-                        format!("Unsupported tool call: {other}")
-                    }
-                };
-
-                msgs.push(Message {
-                    role: "tool".to_string(),
-                    content: Some(tool_result),
-                    tool_call_id: Some(tc.id.to_string()),
-                    tool_calls: None,
-                });
-
-                processed_tcs = true;
+                continue;
+            }
+            _ => {
+                if let Some(content) = ast_msg.content {
+                    println!("{content}");
+                } else if finish_reason.as_deref() != Some("stop") {
+                    eprintln!("Model stopped without content. Reason={finish_reason:?}");
+                }
+        
+                break;
             }
         }
-
-        if processed_tcs {
-            continue;
-        }
-
-        if let Some(content) = ast_msg.content {
-            println!("{content}");
-        }
-
-        if finish_reason.as_deref() == Some("stop") {
-            break;
-        }
-
-        break;
     }
 
     // You can use print statements as follows for debugging, they'll be visible when running tests.
