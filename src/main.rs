@@ -118,7 +118,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if let Some(content) = ast_msg.content {
             println!("{content}");
-            break;
         }
 
         if finish_reason.as_deref() == Some("stop") {
