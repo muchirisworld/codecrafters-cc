@@ -48,40 +48,64 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tool_calls: None,
     }];
 
+    let allowed_tools = vec![
+        json!({
+          "type": "function",
+          "function": {
+            "name": "Read",
+            "description": "Read and return the contents of a file",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "file_path": {
+                  "type": "string",
+                  "description": "The path to the file to read"
+                }
+              },
+              "required": ["file_path"]
+            }
+          }
+        }),
+        json!({
+          "type": "function",
+          "function": {
+            "name": "Write",
+            "description": "Write content to a file",
+            "parameters": {
+              "type": "object",
+              "required": ["file_path", "content"],
+              "properties": {
+                "file_path": {
+                  "type": "string",
+                  "description": "The path of the file to write to"
+                },
+                "content": {
+                  "type": "string",
+                  "description": "The content to write to the file"
+                }
+              }
+            }
+          }
+        }),
+    ];
+
     let mut resp: LLMResponse;
 
     loop {
         let vr = json!({
             "messages": msgs,
             "model": model,
-            "tools": [
-                {
-                  "type": "function",
-                  "function": {
-                    "name": "Read",
-                    "description": "Read and return the contents of a file",
-                    "parameters": {
-                      "type": "object",
-                      "properties": {
-                        "file_path": {
-                          "type": "string",
-                          "description": "The path to the file to read"
-                        }
-                      },
-                      "required": ["file_path"]
-                    }
-                  }
-                }
-            ]
+            "tools": allowed_tools
         });
 
         eprintln!(
-            "Sending chat request: model={model}, messages={}",
-            msgs.len()
+            "Sending chat request: model={model}, messages={}, message={:#?}",
+            msgs.len(),
+            msgs
         );
 
         let response: Value =
-            match timeout(Duration::from_secs(30), client.chat().create_byot(vr)).await {
+            match timeout(Duration::from_secs(900), client.chat().create_byot(vr)).await {
                 Ok(Ok(response)) => {
                     eprintln!("Received chat response");
                     response
@@ -91,10 +115,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     return Err(Box::<dyn std::error::Error>::from(err));
                 }
                 Err(_) => {
-                    eprintln!("Chat request timed out after 30 seconds");
-                    return Err("Chat request timed out after 30 seconds".into());
+                    eprintln!("Chat request timed out after 15 mins");
+                    return Err("Chat request timed out after 15 mins".into());
                 }
             };
+
+        eprintln!("Response: {:#?}", &response);
 
         resp = match serde_json::from_value(response) {
             Ok(resp) => resp,
@@ -118,7 +144,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let tool_result = match tc.function_name() {
                         "Read" => {
                             let fp = tc.read_file_path()?;
-                            fs::read_to_string(fp.file_path.as_str())?
+                            match fs::read_to_string(fp.file_path.as_str()) {
+                                Ok(res) => res,
+                                Err(err) => format!("An error occurred attempting to read file: {err:?}")
+                            }
                         }
                         other => {
                             format!("Unsupported tool call: {other}")
@@ -202,6 +231,37 @@ fn default_tool_call_type() -> String {
 struct Function {
     name: String,
     arguments: String,
+    description: Option<String>,
+    parameters: Option<Parameter>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Parameter {
+    #[serde(rename = "type")]
+    param_type: String,
+    required: Vec<String>,
+    properties: Property,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Property {
+    #[serde(rename = "file_path")]
+    prop_file_path: PropFilePath,
+    content: Content,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PropFilePath {
+    #[serde(rename = "type")]
+    file_path_type: String,
+    description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Content {
+    #[serde(rename = "type")]
+    content_type: String,
+    description: String,
 }
 
 impl Message {
